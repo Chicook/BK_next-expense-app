@@ -8,19 +8,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-
-// Define transaction type
-type Transaction = {
-  id: string
-  type: "income" | "expense"
-  amount: number
-  description: string
-  category: string
-  date: string
-}
+import { createTransaction } from "@/actions/create-expense"
+import { toast } from "sonner"
 
 interface TransactionFormProps {
-  onSubmit: (transaction: Transaction) => void
+  onSubmit?: () => void
 }
 
 export function TransactionForm({ onSubmit }: TransactionFormProps) {
@@ -28,31 +20,53 @@ export function TransactionForm({ onSubmit }: TransactionFormProps) {
   const [description, setDescription] = useState<string>("")
   const [category, setCategory] = useState<string>("")
   const [transactionType, setTransactionType] = useState<"income" | "expense">("expense")
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsSubmitting(true)
 
-    if (!amount || !description || !category) return
-
-    const newTransaction: Transaction = {
-      id: Date.now().toString(),
-      type: transactionType,
-      amount: Number.parseFloat(amount),
-      description,
-      category,
-      date: new Date().toISOString().split("T")[0],
+    if (!amount || !description || !category) {
+      toast.error("Por favor completa todos los campos")
+      setIsSubmitting(false)
+      return
     }
 
-    onSubmit(newTransaction)
+    try {
+      // Llamar a la acción del servidor
+      const result = await createTransaction({
+        type: transactionType,
+        amount: Number.parseFloat(amount),
+        description,
+        category,
+        date: new Date().toISOString().split("T")[0],
+      })
 
-    // Reset form
-    setAmount("")
-    setDescription("")
-    setCategory("")
+      if (result.success) {
+        toast.success("Transacción guardada correctamente")
+        
+        // Reset form
+        setAmount("")
+        setDescription("")
+        setCategory("")
+        
+        // Si hay una función onSubmit proporcionada, llamarla
+        if (onSubmit) {
+          onSubmit()
+        }
+      } else {
+        toast.error(result.error || "Error al guardar la transacción")
+      }
+    } catch (error) {
+      toast.error("Error al procesar la transacción")
+      console.error(error)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 border rounded-md p-4">
+    <form onSubmit={handleSubmit} className="space-y-4 border dark:border-gray-700 rounded-md p-4 text-gray-900 dark:text-gray-100">
       <div className="space-y-2">
         <Label>Tipo de transacción</Label>
         <RadioGroup
@@ -64,14 +78,14 @@ export function TransactionForm({ onSubmit }: TransactionFormProps) {
           <div className="flex items-center space-x-2">
             <RadioGroupItem value="income" id="income" />
             <Label htmlFor="income" className="flex items-center gap-1 cursor-pointer">
-              <PlusCircle className="h-4 w-4 text-green-500" />
+              <PlusCircle className="h-4 w-4 text-green-500 dark:text-green-400" />
               Ingreso
             </Label>
           </div>
           <div className="flex items-center space-x-2">
             <RadioGroupItem value="expense" id="expense" />
             <Label htmlFor="expense" className="flex items-center gap-1 cursor-pointer">
-              <MinusCircle className="h-4 w-4 text-red-500" />
+              <MinusCircle className="h-4 w-4 text-red-500 dark:text-red-400" />
               Gasto
             </Label>
           </div>
@@ -88,13 +102,14 @@ export function TransactionForm({ onSubmit }: TransactionFormProps) {
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             required
+            className="dark:bg-gray-800 dark:border-gray-700"
           />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="category">Categoría</Label>
           <Select value={category} onValueChange={setCategory} required>
-            <SelectTrigger>
+            <SelectTrigger className="dark:bg-gray-800 dark:border-gray-700">
               <SelectValue placeholder="Seleccionar categoría" />
             </SelectTrigger>
             <SelectContent>
@@ -117,11 +132,12 @@ export function TransactionForm({ onSubmit }: TransactionFormProps) {
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           required
+          className="dark:bg-gray-800 dark:border-gray-700"
         />
       </div>
 
-      <Button type="submit" className="w-full">
-        {transactionType === "income" ? "Agregar Ingreso" : "Agregar Gasto"}
+      <Button type="submit" className="w-full" disabled={isSubmitting}>
+        {isSubmitting ? "Guardando..." : transactionType === "income" ? "Agregar Ingreso" : "Agregar Gasto"}
       </Button>
     </form>
   )

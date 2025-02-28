@@ -2,28 +2,11 @@
 
 import { useState, useEffect } from "react"
 import { Bar } from "react-chartjs-2"
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from "chart.js"
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ChartData } from "chart.js"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useTheme } from "next-themes"
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
-
-const options = {
-  responsive: true,
-  plugins: {
-    legend: {
-      position: "top" as const,
-    },
-    title: {
-      display: true,
-      text: "Ingresos y Gastos por Categoría",
-    },
-  },
-  scales: {
-    y: {
-      beginAtZero: true,
-    },
-  },
-}
 
 type Transaction = {
   type: "income" | "expense"
@@ -32,10 +15,50 @@ type Transaction = {
 }
 
 export default function ExpenseRequest() {
-  const [chartData, setChartData] = useState({
+  const { theme, systemTheme } = useTheme()
+  const currentTheme = theme === "system" ? systemTheme : theme
+  const isDark = currentTheme === "dark"
+
+  const [chartData, setChartData] = useState<ChartData<"bar", number[], string>>({
     labels: [],
     datasets: [],
   })
+
+  const options = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: "top" as const,
+        labels: {
+          color: isDark ? "#e5e7eb" : "#1f2937",
+        }
+      },
+      title: {
+        display: true,
+        text: "Ingresos y Gastos por Categoría",
+        color: isDark ? "#e5e7eb" : "#1f2937",
+      },
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          color: isDark ? "#9ca3af" : "#4b5563",
+        },
+        grid: {
+          color: isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)",
+        }
+      },
+      x: {
+        ticks: {
+          color: isDark ? "#9ca3af" : "#4b5563",
+        },
+        grid: {
+          color: isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.1)",
+        }
+      }
+    },
+  }
 
   useEffect(() => {
     // Simular datos de transacciones
@@ -62,23 +85,22 @@ export default function ExpenseRequest() {
         {
           label: "Ingresos",
           data: incomeData,
-          backgroundColor: "rgba(75, 192, 192, 0.6)",
+          backgroundColor: isDark ? "rgba(75, 192, 192, 0.8)" : "rgba(75, 192, 192, 0.6)",
         },
         {
           label: "Gastos",
           data: expenseData,
-          backgroundColor: "rgba(255, 99, 132, 0.6)",
+          backgroundColor: isDark ? "rgba(255, 99, 132, 0.8)" : "rgba(255, 99, 132, 0.6)",
         },
       ],
     })
-  }, [])
+  }, [isDark])
 
   return (
-    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-      <div className="p-5">{/* El contenido del gráfico se mantendrá aquí */}</div>
-      <Card>
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
+      <Card className="border-0 shadow-none bg-transparent">
         <CardHeader>
-          <CardTitle>Resumen Financiero</CardTitle>
+          <CardTitle className="text-gray-900 dark:text-gray-100">Resumen Financiero</CardTitle>
         </CardHeader>
         <CardContent>
           <Bar options={options} data={chartData} />
